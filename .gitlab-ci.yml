@@ -1,12 +1,16 @@
+image: node:latest
+
 stages:
   - build
+  - run
 
-
-build:
+# Job's name
+first-job:
+  # Define stage
   stage: build
+  # What to run on the job.
   script:
     - npm install
   artifacts:
     paths:
-      - node_modules/
-
+      - node_modules
