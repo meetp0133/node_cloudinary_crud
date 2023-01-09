@@ -14,7 +14,7 @@ exports.upload = async (req, res) => {
         const reqParam = req.body
         const exitingUser = await userModel.findOne({name: reqParam.name, status: ACTIVE})
         if (exitingUser) {
-            Sentry.captureException("Already Exist");
+            Sentry.captureException("Already Exists");
             return helper.success(res, META_STATUS_0, "Already Exist..!!", EXITING)
         }
         const result = await cloudinary.v2.uploader.upload(req.file.path);
