@@ -6,12 +6,17 @@ const uploader = require("../middalware/multer");
 const {
     SUCCESSFUL, ACTIVE, DELETED, META_STATUS_0, META_STATUS_1, SERVERERROR, EXITING, FAILURE
 } = require("../config/key")
+const Sentry = require("@sentry/node");
+
 
 exports.upload = async (req, res) => {
     try {
         const reqParam = req.body
         const exitingUser = await userModel.findOne({name: reqParam.name, status: ACTIVE})
-        if (exitingUser) return helper.success(res, META_STATUS_0, "Already Exist..!!", EXITING)
+        if (exitingUser) {
+            Sentry.captureException("Already Exist");
+            return helper.success(res, META_STATUS_0, "Already Exist..!!", EXITING)
+        }
         const result = await cloudinary.v2.uploader.upload(req.file.path);
 
         const user = new userModel({
@@ -29,6 +34,7 @@ exports.upload = async (req, res) => {
         }
         return helper.success(res, META_STATUS_1, "Image Added successfully..!!", SUCCESSFUL, data)
     } catch (e) {
+        Sentry.captureException("Something wrong..!!");
         return helper.error(res, "Something wrong..!!", SERVERERROR)
 
     }
@@ -37,11 +43,15 @@ exports.upload = async (req, res) => {
 exports.getImage = async (req, res) => {
     try {
         const exitingUser = await userModel.findOne({_id: req.params.id, status: ACTIVE})
-        if (!exitingUser) return helper.error(res, "User not found..!!", FAILURE)
+        if (!exitingUser) {
+            Sentry.captureException("User not found..!!");
+            return helper.error(res, "User not found..!!", FAILURE)
+        }
         // const image = await cloudinary.url(req.params.public_id,{width:200,height: 500, crop: "fill"})
         const imageUrl = await cloudinary.url(exitingUser.cloudinary_Id)
         return helper.success(res, META_STATUS_1, "Get image URL successfully..!!", SUCCESSFUL, imageUrl)
     } catch (e) {
+        Sentry.captureException("Something wrong..!!");
         return helper.error(res, "Something wrong..!!", SERVERERROR)
 
     }
@@ -50,7 +60,10 @@ exports.getImage = async (req, res) => {
 exports.deleteImage = async (req, res) => {
     try {
         const findUser = await userModel.findOne({_id: req.params.id, status: ACTIVE})
-        if (!findUser) return helper.error(res, "Enter valid userId..!!", FAILURE)
+        if (!findUser) {
+            await Sentry.captureException("Enter valid userId..!!");
+            return helper.error(res, "Enter valid userId..!!", FAILURE)
+        }
         const deleteImage = await cloudinary.v2.uploader.destroy(findUser.cloudinary_Id)
         const updatestatus = await userModel.findOneAndUpdate({_id: req.params.id}, {$set: {status: DELETED}})
         const userDetails = {
@@ -60,6 +73,7 @@ exports.deleteImage = async (req, res) => {
         }
         return helper.success(res, META_STATUS_1, "Image deleted successfully..!!", SUCCESSFUL, userDetails)
     } catch (e) {
+        await Sentry.captureException("Something wrong..!!");
         return helper.error(res, "Something wrong..!!", SERVERERROR)
 
     }
@@ -68,7 +82,10 @@ exports.deleteImage = async (req, res) => {
 exports.updateImage = async (req, res) => {
     try {
         const user = await userModel.findOne({_id: req.params.id, status: ACTIVE})
-        if (!user) return helper.error(res, "User not found..!!", FAILURE)
+        if (!user) {
+            await Sentry.captureException("User not found..!!");
+            return helper.error(res, "User not found..!!", FAILURE)
+        }
         const deleteImage = await cloudinary.v2.uploader.destroy(user.cloudinary_Id)
 
         const result = await cloudinary.v2.uploader.upload(req.file.path);
@@ -85,6 +102,7 @@ exports.updateImage = async (req, res) => {
         }
         return helper.success(res, META_STATUS_1, "Image updated successfully..!!", SUCCESSFUL, data)
     } catch (e) {
+        await Sentry.captureException("Something wrong..!!");
         return helper.error(res, "Something wrong..!!", SERVERERROR)
 
     }
@@ -93,7 +111,12 @@ exports.updateImage = async (req, res) => {
 exports.viewUser = async (req, res) => {
     try {
         const userData = await userModel.findOne({_id: req.params.id, status: ACTIVE})
-        if (!userData) return helper.error(res, "Enter valid userId..!!")
+        if (!userData) {
+            Sentry.captureException("Enter valid userId..!!");
+            return helper.error(res, "Enter valid userId..!!",FAILURE
+
+            )
+        }
         const data = {
             status: userData.status,
             userId: userData._id,
@@ -103,6 +126,7 @@ exports.viewUser = async (req, res) => {
         }
         return helper.success(res, META_STATUS_1, "User details listed successfully..!!", SUCCESSFUL, data)
     } catch (e) {
+        await Sentry.captureException("Something wrong..!!");
         return helper.error(res, "Something wrong..!!", SERVERERROR)
     }
 }
